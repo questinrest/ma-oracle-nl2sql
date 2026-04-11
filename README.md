@@ -34,7 +34,7 @@ This project uses a layered architecture to securely convert conversational ques
 
 Start up the Uvicorn server, running the `main.py` entry point:
 ```bash
-.venv\Scripts\python main.py
+uvicorn main:app --reload
 ```
 
 - **Open the Front-End UI Application**: Visit `http://127.0.0.1:8000` in your web browser!
