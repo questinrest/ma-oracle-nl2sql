@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Project Directories
+unused/
+archive/
+
+# Databases
+*.sqlite3
+# financials.db
+
+# Notebooks
+.ipynb_checkpoints
+
+# OS Files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial NL2SQL Explorer</title>
+    <meta name="description" content="Explore financial records seamlessly using natural language to SQL">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="blob-bg"></div>
+    <div class="blob-bg blob-2"></div>
+    <header>
+        <div class="nav-container">
+            <h1 class="logo">Fin<span>SQL</span> Agent</h1>
+            <div id="health-status" class="status-indicator">
+                <span class="pulse"></span>
+                <span id="health-text">Checking System...</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="hero-section">
+            <h2 class="title">Query Financials Effortlessly.</h2>
+            <p class="subtitle">Ask about assets, income, balance sheets, and metrics in simple natural language format. Powered by Groq and SQLite.</p>
+        </section>
+
+        <section class="search-section">
+            <div class="search-box">
+                <button id="try-btn" class="secondary-btn" title="Load an example question">✨ Example</button>
+                <input type="text" id="query-input" placeholder="e.g., Show me the top 5 companies by total assets in 2024..." autocomplete="off">
+                <button id="search-btn" class="primary-btn">
+                    <span id="btn-text">Generate SQL</span>
+                    <div id="btn-loader" class="loader hidden"></div>
+                </button>
+            </div>
+            
+            <div id="error-container" class="error-msg hidden"></div>
+        </section>
+
+        <section class="results-section hidden" id="results-section">
+            <div class="sql-card glass-panel">
+                <div class="card-header">
+                    <h3>Generated Query</h3>
+                    <span class="badge">SQLite</span>
+                </div>
+                <div class="code-block-wrapper">
+                    <code id="sql-output" class="sql-code">SELECT * FROM data;</code>
+                </div>
+            </div>
+
+            <div class="message-card glass-panel">
+                <p id="assistant-message"></p>
+            </div>
+
+            <div class="table-card glass-panel hidden" id="table-card">
+                <div class="table-wrapper">
+                    <table id="results-table">
+                        <thead id="table-head"></thead>
+                        <tbody id="table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
