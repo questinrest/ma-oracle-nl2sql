@@ -1,7 +1,6 @@
 import asyncio
 
-from vanna.capabilities.agent_memory import ToolMemory
-from vanna.integrations.local.agent_memory import DemoAgentMemory
+from vanna.capabilities.agent_memory import ToolMemory, AgentMemory
 
 from app.config import get_settings
 from app.database import DatabaseClient
@@ -274,10 +273,27 @@ TRAINING_EXAMPLES = [
             """
         },
     ),
+    ToolMemory(
+        question="What was Apple's total revenue in fiscal year 2009?",
+        tool_name="run_sql",
+        args={
+            "sql": """
+            SELECT f.value AS total_revenue, f.unit, f.period_end
+            FROM financial_facts f
+            JOIN companies c ON c.cik = f.cik
+            WHERE c.ticker = 'AAPL'
+              AND f.concept IN ('Revenues', 'SalesRevenueNet', 'RevenueFromContractWithCustomerExcludingAssessedTax')
+              AND f.fiscal_year = 2009
+              AND f.is_annual = 1
+            ORDER BY f.period_end DESC
+            LIMIT 1
+            """
+        },
+    ),
 ]
 
 
-async def seed_agent_memory(agent_memory: DemoAgentMemory) -> None:
+async def seed_agent_memory(agent_memory: AgentMemory) -> None:
     context = build_tool_context(agent_memory)
     existing_questions = {memory.question for memory in await agent_memory.get_recent_memories(context, limit=5000)}
 
@@ -298,14 +314,14 @@ async def validate_examples() -> None:
     database = DatabaseClient(settings.db_path)
     schema = load_database_schema(settings.db_path)
     validator = SQLValidator(schema=schema, database=database)
-    agent_memory = create_agent_memory()
+    agent_memory = create_agent_memory(settings)
 
     for example in TRAINING_EXAMPLES:
         sql = example.args["sql"]
         validator.validate(sql)
 
     await seed_agent_memory(agent_memory)
-    print(f"Validated and loaded {count_memories(agent_memory)} training examples into demo memory.")
+    print(f"Validated and loaded {count_memories(agent_memory)} training examples into memory.")
     print("These examples are loaded automatically when the API starts.")
 
 

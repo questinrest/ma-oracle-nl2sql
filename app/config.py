@@ -17,6 +17,8 @@ class Settings:
     port: int = int(os.getenv("PORT", "8000"))
     max_rows: int = int(os.getenv("MAX_ROWS", "200"))
     memory_search_limit: int = int(os.getenv("MEMORY_SEARCH_LIMIT", "4"))
+    memory_type: str = os.getenv("MEMORY_TYPE", "demo")
+    chroma_path: str = os.getenv("CHROMA_PATH", "./chroma_db")
 
 
 def get_settings() -> Settings:

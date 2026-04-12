@@ -27,3 +27,4 @@ archive/
 # OS Files
 .DS_Store
 Thumbs.db
+chroma_db/

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from vanna.integrations.local.agent_memory import DemoAgentMemory
+from vanna.capabilities.agent_memory import AgentMemory
 
 from app.config import Settings
 from app.database import DatabaseClient, QueryExecutionError
@@ -16,7 +16,7 @@ class NL2SQLPipeline:
     database: DatabaseClient
     sql_generator: SQLGenerator
     sql_validator: SQLValidator
-    agent_memory: DemoAgentMemory
+    agent_memory: AgentMemory
 
     async def run(self, question: str) -> ChatResponse:
         clean_question = question.strip()

@@ -3,3 +3,4 @@ python-dotenv
 fastapi
 uvicorn
 vanna[openai]
+chromadb>=1.5.0

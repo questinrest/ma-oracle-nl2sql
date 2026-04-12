@@ -18,7 +18,7 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     database = DatabaseClient(settings.db_path)
     schema = load_database_schema(settings.db_path)
-    agent_memory = create_agent_memory()
+    agent_memory = create_agent_memory(settings)
     await seed_agent_memory(agent_memory)
 
     app.state.settings = settings
