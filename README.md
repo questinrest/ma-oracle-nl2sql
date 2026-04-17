@@ -5,38 +5,68 @@ This project uses a layered architecture to securely convert conversational ques
 
 ---
 
-## What Has Been Implemented
+## Key Features & Implementations
 
-1. **Schema-Aware LLM Generation Layer (`app/llm.py`, `app/schema.py`)**
-    - Dynamically queries SQLite metadata at initialization and generates stringified schema representation.
-    - Feeds metadata explicitly to Groq (a fast OpenAI-compatible wrapper) via the `SQLGenerator`.
+1. **Accuracy-First LLM Layer (`app/llm.py`, `app/schema.py`)**
+    - **Advanced Prompt Engineering**: Includes 8+ strict accuracy rules covering deduplication, annual data quality (10-K preference), and balance sheet snapshot safety.
+    - **Fiscal Calendar Awareness**: Native handling of non-calendar fiscal years for companies like AAPL (Sep), MSFT (Jun), and NVDA/CRM/SNOW/CRWD (Jan).
+    - **Concept Aliasing**: Automatically handles historical XBRL concept name changes (e.g., shifts in Revenue concept names over decades).
 
-2. **In-Context Few-Shot Semantic Memory (`app/memory.py`, `app/seed_memory.py`)**
-    - Utilizes a robust suite of optimized historical text-to-sql questions (e.g. `Show me the top 5 companies by total assets`) securely connected to Vanna's internal semantic capabilities.
-    - Matches users' queries against memory entries, improving correct domain SQL generation natively.
+2. **Multi-Backend Agent Memory (`app/memory.py`, `app/seed_memory.py`)**
+    - **Pinecone & ChromaDB Support**: Choose between high-performance cloud vector search (Pinecone) or local persistence (ChromaDB).
+    - **Validated Seeding**: The `seed_memory.py` utility live-validates every training example against the actual database before injection, ensuring no "empty-result" patterns are learned.
 
-3. **Strict Validation & Security Layer (`app/security.py`)**
-    - Ensures 100% read-only operations via rigid regular expressions preventing destructive SQL (`DROP`, `DELETE`, `ALTER`).
-    - Validates returned SQL column paths and bindings specifically against the parsed Database Schema. 
+3. **Strict Security & Validation (`app/security.py`)**
+    - **Read-Only Enforcement**: Rigid RegEx guards against `DROP`, `DELETE`, `ALTER`, etc.
+    - **Schema Cross-Referencing**: Validates all generated column and table references against live database metadata.
 
-4. **Pipeline Execution & Fallbacks (`app/pipeline.py`, `app/database.py`)**
-    - Safely unrolls operations: Extract Request -> Search Memory -> Generate SQL -> Validate Syntax -> Sanitize against Schema -> Execute Cursor Query -> Wrap to JSON.
-    - Beautifully structures empty datasets, truncation caps, and gracefully explains syntax generation failures without crashing the server.
+4. **FastAPI Web Delivery (`app/api.py`, `app/models.py`)**
+    - Integrated with a modern Glassmorphic UI served from `static/`.
+    - Health monitoring endpoints including agent memory counts.
 
-5. **FastAPI Web Delivery (`app/api.py`, `app/models.py`)**
-    - Typed Pydantic data schemas for JSON integrity.
-    - Exposes a `ChatResponse` at `POST /chat` and health states at `GET /health`.
-    - Integrated with a NextGen Glassmorphic UI served dynamically from `static/`.
+---
 
-6. **Persistent Agent Memory (Latest Update)**
-    - Replaced transient memory with persistent `ChromaDB` integration.
-    - Configuration driven (`MEMORY_TYPE=chroma`) preserving agent learning capability across server restarts.
+## Configuration
+
+The application is fully configurable via the `.env` file. 
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `MEMORY_TYPE` | Choose `demo`, `chroma`, or `pinecone` | `demo` |
+| `GROQ_API_KEY` | Your API key for LLM generation | (Required) |
+| `PINECONE_API_KEY` | Required if `MEMORY_TYPE=pinecone` | - |
+| `PINECONE_INDEX_NAME` | The name of your Pinecone index | `nl2sql-memory` |
+| `CHROMA_PATH` | Path for local ChromaDB storage | `./chroma_db` |
+
+---
+
+## Setup & Running
+
+1. **Install Dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   # For Pinecone support:
+   pip install pinecone vanna[pinecone]
+   ```
+
+2. **Seed Memory**:
+   Before running for the first time, seed your agent's memory:
+   ```bash
+   python -m app.seed_memory
+   ```
+
+3. **Launch Server**:
+   ```bash
+   uvicorn main:app --reload
+   ```
+
+4. **Access UI**: Visit `http://127.0.0.1:8000` in your browser.
 
 ---
 
 ## Example Queries
 
-Below are screenshots of three complex NL2SQL queries executed against the database:
+Below are screenshots of complex NL2SQL queries executed against the database:
 
 ![Query 1](static/query1.png)
 ![Query 2](static/query2.png)
@@ -44,20 +74,10 @@ Below are screenshots of three complex NL2SQL queries executed against the datab
 
 ---
 
-## Running the Application
-
-Start up the Uvicorn server, running the `main.py` entry point:
-```bash
-uvicorn main:app --reload
-```
-
-- **Open the Front-End UI Application**: Visit `http://127.0.0.1:8000` in your web browser!
-- **Test Endpoint (Health Check)**: `curl http://127.0.0.1:8000/health`
-
 ## File Structure
-- `app/api.py`: FastAPI Routes and Static file serving configurations.
-- `app/pipeline.py`: The single operational chain for parsing natural language to SQL executing gracefully.
-- `app/security.py`: Guardrails preventing bad SQL execution.
-- `app/seed_memory.py`: Our domain expertise injected into local agent memory context.
-- `static/`: Contains the beautiful Dark-Mode Glassmorphism Web Interface files (`index.html`, `style.css`, `script.js`).
-- `main.py`: The Uvicorn entry program.
+- `app/api.py`: FastAPI Routes and lifecycle management.
+- `app/llm.py`: Expert SQL generation with domain accuracy rules.
+- `app/memory.py`: abstraction for different vector database backends.
+- `app/seed_memory.py`: Live-validated training data for the agent.
+- `static/`: Beautiful Dark-Mode Glassmorphism Web Interface.
+- `main.py`: The Uvicorn entry point.

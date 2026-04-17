@@ -1,4 +1,5 @@
 import asyncio
+import sqlite3
 
 from vanna.capabilities.agent_memory import ToolMemory, AgentMemory
 
@@ -15,12 +16,17 @@ TRAINING_EXAMPLES = [
         tool_name="run_sql",
         args={
             "sql": """
-            SELECT c.entity_name, c.ticker, f.value AS total_assets
+            SELECT c.entity_name, c.ticker, f.value AS total_assets, f.period_end
             FROM financial_facts f
             JOIN companies c ON c.cik = f.cik
             WHERE f.concept = 'Assets'
               AND f.is_annual = 1
-              AND f.period_end = (SELECT MAX(period_end) FROM financial_facts WHERE concept = 'Assets')
+              AND f.filing_type = '10-K'
+              AND f.period_end = (
+                  SELECT MAX(f2.period_end)
+                  FROM financial_facts f2
+                  WHERE f2.cik = f.cik AND f2.concept = 'Assets' AND f2.is_annual = 1
+              )
             ORDER BY total_assets DESC
             LIMIT 5
             """
@@ -92,7 +98,8 @@ TRAINING_EXAMPLES = [
               AND f.concept = 'Assets'
               AND f.fiscal_year = 2024
               AND f.is_annual = 1
-            ORDER BY f.period_end DESC
+              AND f.filing_type = '10-K'
+            ORDER BY f.filed_date DESC
             LIMIT 1
             """
         },
@@ -108,6 +115,7 @@ TRAINING_EXAMPLES = [
             WHERE c.ticker = 'MSFT'
               AND f.concept = 'NetIncomeLoss'
               AND f.is_annual = 1
+              AND f.filing_type = '10-K'
             ORDER BY f.fiscal_year DESC
             LIMIT 5
             """
@@ -124,6 +132,7 @@ TRAINING_EXAMPLES = [
             WHERE f.concept = 'GrossProfit'
               AND f.fiscal_year = 2024
               AND f.is_annual = 1
+              AND f.filing_type = '10-K'
             ORDER BY gross_profit DESC
             LIMIT 1
             """
@@ -158,18 +167,21 @@ TRAINING_EXAMPLES = [
             JOIN companies c ON c.cik = f.cik
             WHERE c.ticker = 'NVDA'
               AND f.category = 'balance_sheet'
+              AND f.is_annual = 1
+              AND f.filing_type = '10-K'
               AND f.period_end = (
                   SELECT MAX(f2.period_end)
                   FROM financial_facts f2
                   WHERE f2.cik = f.cik
                     AND f2.category = 'balance_sheet'
+                    AND f2.is_annual = 1
               )
             ORDER BY f.label
             """
         },
     ),
     ToolMemory(
-        question="Get Meta's diluted EPS by quarter for fiscal year 2025",
+        question="Get Meta's diluted EPS by quarter for fiscal year 2024",
         tool_name="run_sql",
         args={
             "sql": """
@@ -178,55 +190,72 @@ TRAINING_EXAMPLES = [
             JOIN companies c ON c.cik = f.cik
             WHERE c.ticker = 'META'
               AND f.concept = 'EarningsPerShareDiluted'
-              AND f.fiscal_year = 2025
+              AND f.fiscal_year = 2024
+              AND f.fiscal_quarter IS NOT NULL
             ORDER BY f.fiscal_quarter
             """
         },
     ),
     ToolMemory(
-        question="Compare accounts receivable for Amazon and Alphabet in fiscal year 2025 quarter 1",
+        question="Compare accounts receivable for Amazon and Alphabet in fiscal year 2024",
         tool_name="run_sql",
         args={
             "sql": """
-            SELECT c.entity_name, c.ticker, f.value AS accounts_receivable
+            SELECT c.entity_name, c.ticker, f.value AS accounts_receivable, f.period_end
             FROM financial_facts f
             JOIN companies c ON c.cik = f.cik
             WHERE c.ticker IN ('AMZN', 'GOOGL')
               AND f.concept = 'AccountsReceivableNetCurrent'
-              AND f.fiscal_year = 2025
-              AND f.fiscal_quarter = 1
+              AND f.fiscal_year = 2024
+              AND f.is_annual = 1
+              AND f.filing_type = '10-K'
             ORDER BY c.ticker
             """
         },
     ),
     ToolMemory(
-        question="Show Apple's dividend per share declared in fiscal year 2025",
+        question="Show Apple's revenue in fiscal year 2024",
         tool_name="run_sql",
         args={
             "sql": """
-            SELECT f.period_start, f.period_end, f.value AS dividend_per_share
+            SELECT f.value AS revenue, f.unit, f.period_end, f.concept
             FROM financial_facts f
             JOIN companies c ON c.cik = f.cik
             WHERE c.ticker = 'AAPL'
-              AND f.concept = 'CommonStockDividendsPerShareDeclared'
-              AND f.fiscal_year = 2025
-            ORDER BY f.period_end
+              AND f.concept IN (
+                'RevenueFromContractWithCustomerExcludingAssessedTax',
+                'Revenues',
+                'SalesRevenueNet',
+                'RevenueFromContractWithCustomerIncludingAssessedTax'
+              )
+              AND f.fiscal_year = 2024
+              AND f.is_annual = 1
+              AND f.filing_type = '10-K'
+            ORDER BY f.filed_date DESC
+            LIMIT 1
             """
         },
     ),
     ToolMemory(
-        question="Show Tesla's current assets and total assets for fiscal year 2025 quarter 3",
+        question="What was Apple's total revenue in fiscal year 2012?",
         tool_name="run_sql",
         args={
             "sql": """
-            SELECT f.concept, f.label, f.value, f.unit
+            SELECT f.value AS total_revenue, f.unit, f.period_end, f.concept
             FROM financial_facts f
             JOIN companies c ON c.cik = f.cik
-            WHERE c.ticker = 'TSLA'
-              AND f.concept IN ('AssetsCurrent', 'Assets')
-              AND f.fiscal_year = 2025
-              AND f.fiscal_quarter = 3
-            ORDER BY f.concept
+            WHERE c.ticker = 'AAPL'
+              AND f.concept IN (
+                'RevenueFromContractWithCustomerExcludingAssessedTax',
+                'Revenues',
+                'SalesRevenueNet',
+                'RevenueFromContractWithCustomerIncludingAssessedTax'
+              )
+              AND f.fiscal_year = 2012
+              AND f.is_annual = 1
+              AND f.filing_type = '10-K'
+            ORDER BY f.filed_date DESC
+            LIMIT 1
             """
         },
     ),
@@ -241,6 +270,7 @@ TRAINING_EXAMPLES = [
             WHERE f.concept = 'InterestExpense'
               AND f.fiscal_year = 2024
               AND f.is_annual = 1
+              AND f.filing_type = '10-K'
             ORDER BY interest_expense DESC
             """
         },
@@ -255,6 +285,8 @@ TRAINING_EXAMPLES = [
             JOIN companies c ON c.cik = f.cik
             WHERE c.ticker IN ('PANW', 'FTNT')
               AND f.concept = 'Goodwill'
+              AND f.is_annual = 1
+              AND f.filing_type = '10-K'
             ORDER BY c.ticker, f.period_end DESC
             """
         },
@@ -274,18 +306,19 @@ TRAINING_EXAMPLES = [
         },
     ),
     ToolMemory(
-        question="What was Apple's total revenue in fiscal year 2009?",
+        question="What was NVIDIA's net income in fiscal year 2025?",
         tool_name="run_sql",
         args={
             "sql": """
-            SELECT f.value AS total_revenue, f.unit, f.period_end
+            SELECT f.value AS net_income, f.unit, f.period_end, f.fiscal_year
             FROM financial_facts f
             JOIN companies c ON c.cik = f.cik
-            WHERE c.ticker = 'AAPL'
-              AND f.concept IN ('Revenues', 'SalesRevenueNet', 'RevenueFromContractWithCustomerExcludingAssessedTax')
-              AND f.fiscal_year = 2009
+            WHERE c.ticker = 'NVDA'
+              AND f.concept = 'NetIncomeLoss'
+              AND f.fiscal_year = 2025
               AND f.is_annual = 1
-            ORDER BY f.period_end DESC
+              AND f.filing_type = '10-K'
+            ORDER BY f.filed_date DESC
             LIMIT 1
             """
         },
@@ -294,12 +327,32 @@ TRAINING_EXAMPLES = [
 
 
 async def seed_agent_memory(agent_memory: AgentMemory) -> None:
+    settings = get_settings()
     context = build_tool_context(agent_memory)
     existing_questions = {memory.question for memory in await agent_memory.get_recent_memories(context, limit=5000)}
+
+    # Open DB once for live validation
+    conn = sqlite3.connect(settings.db_path)
+    seeded = 0
+    skipped = 0
 
     for example in TRAINING_EXAMPLES:
         if example.question in existing_questions:
             continue
+
+        sql = example.args.get("sql", "")
+        try:
+            cursor = conn.execute(sql)
+            rows = cursor.fetchall()
+            if not rows:
+                print(f"[SKIP — 0 rows] {example.question!r}")
+                skipped += 1
+                continue
+        except Exception as exc:
+            print(f"[SKIP — SQL error: {exc}] {example.question!r}")
+            skipped += 1
+            continue
+
         await agent_memory.save_tool_usage(
             question=example.question,
             tool_name=example.tool_name,
@@ -307,6 +360,12 @@ async def seed_agent_memory(agent_memory: AgentMemory) -> None:
             context=context,
             success=True,
         )
+        seeded += 1
+
+    conn.close()
+    if skipped:
+        print(f"[seed_memory] Warning: {skipped} example(s) skipped (returned 0 rows or failed SQL).")
+    print(f"[seed_memory] Seeded {seeded} new example(s) into agent memory.")
 
 
 async def validate_examples() -> None:
@@ -316,13 +375,21 @@ async def validate_examples() -> None:
     validator = SQLValidator(schema=schema, database=database)
     agent_memory = create_agent_memory(settings)
 
+    passed = 0
+    failed = 0
     for example in TRAINING_EXAMPLES:
         sql = example.args["sql"]
-        validator.validate(sql)
+        try:
+            validator.validate(sql)
+            passed += 1
+        except Exception as exc:
+            print(f"[FAIL] {example.question!r} — {exc}")
+            failed += 1
 
+    print(f"\nValidation: {passed} passed, {failed} failed.")
     await seed_agent_memory(agent_memory)
-    print(f"Validated and loaded {count_memories(agent_memory)} training examples into memory.")
-    print("These examples are loaded automatically when the API starts.")
+    print(f"Total memories in store: {count_memories(agent_memory)}")
+    print("Done. Examples are seeded automatically when the API starts.")
 
 
 if __name__ == "__main__":
